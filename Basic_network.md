@@ -75,14 +75,22 @@ So: Given a small environment that can live on a single switch, and when comfort
 
   - The public vlan.  
   That is the network that will carry:
-    - an IPv6 prefix that is global unicast (real internet)
+    - an IPv6 prefix that is global unicast (real internet), with a routing advertiser (typically the router does the RA) with router preference set to `high`
     - an IPv4 subnet from which addresses can be allocated to node `public_config`s and to Kubernetes vms
+
   - The management vlan will carry:
     - an optional IPv6 prefix (can be ULA or global unicast)
     - an RFC1918 subnet containing a DHCP server that provides ip addresses for that subnet
     - a default gateway (that typically does NAT)
-    - An optional DNS server (the dhscp server can be configured to provide dns entries outside of that network e.g. `8.8.8.8,1.1.1.1`)
-  - The OOB network will typically carry traffic for managing infrastructure, like the managament ports of switches and router, as well as the IPMI ports of nodes if they have these. Mostly these things are configures statically (in bios), but if not, you'll need to provide DHCP in that sement as well.
+    - An optional DNS server (the DHCP server can be configured to provide dns entries outside of that network e.g. `8.8.8.8,1.1.1.1`)
+    - a tftp server that can provide for iPXE boot if network booted (not usb)
 
-At threefold, we configure the DHCP server to provide specific IP addresses to nodes in function of their MAC address on the management as wel as on the OOB network, so that we can be sure which physical node receives which IP address. That makes it easier to physically locate them. Also, we can then configure the bios IPMI the same for all nodes, not needing a static config. A small drawback is thet we have to recense all the mac addresses and confiure the DHCP server prior to booting them, but as we need to access all bios anyway, we can do that while racking and configuring the bios.
+  - The OOB network will typically carry traffic for managing infrastructure, like the managament ports of switches and router, as well as the IPMI ports of nodes if they have these.
+  Mostly these things are configures statically (in bios), but if not, you'll need to provide DHCP in that sement as well.
+
+At freefarm, we configure the DHCP server to provide specific IP addresses to nodes in function of their MAC address on the management as wel as on the OOB network, so that we can be sure which physical node receives which IP address.
+That makes it easier to physically locate them.
+Also, we can then configure the bios IPMI the same for all nodes, not needing a static config.
+A small drawback is that we have to recense all the mac addresses and confiure the DHCP server prior to booting them, but as we need to access all bios anyway, we can do that while racking and configuring the bios.
+
 
