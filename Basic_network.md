@@ -19,7 +19,7 @@ What you'll need.
 
 ## What it's going to look like
 
-### physical layout
+### __physical layout__
 
 ```
 +                                          +
@@ -57,7 +57,7 @@ The OOB (out-of-band) physical network is optional and can be handled with the l
 
 The optional Internet link drawn here is for when a farmer has possibility to have nultiple uplinks. This will not be discussed here as we suppose a farmer has the necessary knowledge in house to properly configure BGP and routing in case of such a setup.
 
-### logical layout
+### __logical layout__
 
 In order for nodes to properly boot, they need to download and start 0-OS: 
   - with a bios configured to boot from an USB stick
@@ -94,3 +94,39 @@ Also, we can then configure the bios IPMI the same for all nodes, not needing a 
 A small drawback is that we have to recense all the mac addresses and confiure the DHCP server prior to booting them, but as we need to access all bios anyway, we can do that while racking and configuring the bios.
 
 
+# Network Functionality of 0-OS
+
+## boot steps
+
+After iPXE or USB installed and booted the kernel, `zinit` as PID 1, starts `internet`.
+That process is a single_run application that tries to get internet going in a node.
+These are the steps:
+  1. enable all interfaces that are found byo 0-OS.
+  1. on all these interfaces, start a DHCP client, and enable SLAAC for IPv6.
+  Wait for interfaces to settle, and make a list of received IPv[46] addresses
+  1. The interface that received an RFC1918 address AND that could reach the Internet through it's received default gateway becomes the master of the zos bridge
+  1. task is done, register the DHCP client on the zos bridge in zinit, so it gets restarted if neceassary, and disable IPv6 on the slave interface that got connected to the zos bridge.
+  1. exit
+
+## start of network
+
+Once 0-OS has established a management NIC and set it to be slave of the zos bridge, 0-OS basically searches again for a NIC (except `zos`) that has a link and recieves an IPv6 global unicast address.
+That NIC becomes a slave of a `br-pub` bridge. 
+
+If __NO__ NIC has been found that has received an IPv6 address in a timely manner, the bridges `zos` and `br-pub` get connected together so that the management segment becomes the network to forward packets.
+
+0-OS works IPv6 first.
+That means that either way, to get the most out of the grid, getting IPv6 in your network is the best thing to do.
+But there are situations where there is no IPv6 (or at least, no IPv6 with a gatway), where we the start an overlay network that can still provide for IPv6, based on Yggdrasil, so that services on the grid stay reachable. 
+
+So it can be that:
+  - The node has only 1 (one) NIC connected
+    - zos has an RFC1918 address and no IPv6 global unicast.(HIDDEN NODE)  
+      Then the zos and br-pub bridge get connected, and the sole way to reach services on the node (lik 0-DB) is through the yggdrasil overlay network
+    - zos has received an RFC1918 address, AND an IPv6 global unicast.  
+    While the yggdrasil overlay network is still installed so the hidden nodes can reach the services of this node, full IPv6 services over the global unicast IPv6 network is enabled, except when a node lives behind a firewalled IPv6 network.  
+    If firewalled, 0-OS detects that and flags the node as hidden in the explorer
+  - The node has 2 NICs connected.  
+  It needs to be said that if 2 NICs are connected, 0-OS surmises that one of the NIcs __will__ receive a global unicast IPv6 address, and if it doesn't, will flag it as a hidden node.
+
+## public_config
